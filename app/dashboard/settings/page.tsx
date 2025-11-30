@@ -61,7 +61,6 @@ export default function SettingsPage() {
   const [customAccounts, setCustomAccounts] = useState<Account[]>([...getCustomAccounts()])
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
   const [carryOver, setCarryOver] = useState("off")
-  const [carryOverAccount, setCarryOverAccount] = useState("cash")
 
   // Firebase auth state
   const [showLoginForm, setShowLoginForm] = useState(false)
@@ -91,11 +90,6 @@ export default function SettingsPage() {
     const storedCarryOver = localStorage.getItem("carryOver")
     if (storedCarryOver !== null) {
       setCarryOver(storedCarryOver)
-    }
-
-    const storedCarryOverAccount = localStorage.getItem("carryOverAccount")
-    if (storedCarryOverAccount !== null) {
-      setCarryOverAccount(storedCarryOverAccount)
     }
   }, [])
 
@@ -729,7 +723,7 @@ export default function SettingsPage() {
             <CardHeader className="flex-1">
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
-                Currency Preferences
+                Currency Preference
               </CardTitle>
               <CardDescription>Set your default currency</CardDescription>
             </CardHeader>
@@ -751,52 +745,25 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="flex flex-row sm:items-center sm:justify-between max-sm:flex-col gap-3">
             <CardHeader className="flex-1">
               <CardTitle className="flex items-center gap-2">
                 <RefreshCwIcon className="h-5 w-5" />
-                Carry Over Preferences
+                Carry Over Preference
               </CardTitle>
               <CardDescription>Set your carry over preference for balance carry over from previous month</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              <div className={`flex items-center gap-2 max-sm:gap-1`}>
-                <Label htmlFor="carry-over-preference" className="text-sm font-medium whitespace-nowrap">
-                  Carry Over Preference
-                </Label>
-                <Select value={carryOver} onValueChange={(value) => {setCarryOver(value); localStorage.setItem("carryOver", value)}}>
-                  <SelectTrigger id="carry-over-preference">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="off">Off</SelectItem>
-                    <SelectItem value="ad">AD calendar</SelectItem>
-                    <SelectItem value="bs">BS calendar</SelectItem>
-                  </SelectContent>
-                </Select>    
-              </div>
-              <div className={`flex items-center gap-2 max-sm:gap-1`}>
-                <Label htmlFor="carry-over-account" className="text-sm font-medium whitespace-nowrap">
-                  Carry Over Account
-                </Label>
-                <Select value={carryOverAccount} onValueChange={(value) => {setCarryOverAccount(value); localStorage.setItem("carryOverAccount", value)}}>
-                  <SelectTrigger id="carry-over-account">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((acc) => { 
-                      return (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          <div className="flex items-center gap-2">
-                            <span className="w-5 text-center font-bold overflow-hidden">{acc.icon}</span>
-                            <span>{acc.name}</span>
-                          </div>
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>    
-              </div>      
+            <CardContent>
+              <Select value={carryOver} onValueChange={(value) => {setCarryOver(value); localStorage.setItem("carryOver", value)}}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="off">Off</SelectItem>
+                  <SelectItem value="ad">AD calendar</SelectItem>
+                  <SelectItem value="bs">BS calendar</SelectItem>
+                </SelectContent>
+              </Select>    
             </CardContent>
           </Card>
 

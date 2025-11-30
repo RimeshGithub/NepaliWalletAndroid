@@ -15,9 +15,9 @@ import { App } from "@capacitor/app"
 import { useSidebarStore } from "@/hooks/use-sidebar-store"
 import { useEditFormStore } from "@/hooks/use-editform-store"
 import { useTransactions } from "@/hooks/use-transactions"
+import { useAccounts } from "@/hooks/use-accounts"
 import NepaliDate from "nepali-date-converter"
 import "./globals.css"
-import { Transaction } from "firebase/firestore"
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -114,55 +114,51 @@ export default function RootLayout({
   }, [syncData, user])
 
   // ⭐ Add carry-over if new month
+  const { accounts } = useAccounts()
   const { transactions: trans, addTransaction } = useTransactions()
   const [carryOver, setCarryOver] = useState<"off" | "ad" | "bs">("off")
-  const [carryOverAccount, setCarryOverAccount] = useState("cash")
 
   useEffect(() => {
     const storedCarryOver = localStorage.getItem("carryOver")
     if (storedCarryOver !== null) {
       setCarryOver(storedCarryOver)
     }
-
-    const storedCarryOverAccount = localStorage.getItem("carryOverAccount")
-    if (storedCarryOverAccount !== null) {
-      setCarryOverAccount(storedCarryOverAccount)
-    }
   }, [])
 
   useEffect(() => {
-    const transactions = trans.filter((t) => t.account === carryOverAccount)
+    accounts.forEach((acc) => {
+      const transactions = trans.filter((t) => t.account === acc.id)
 
-    if (!transactions.length || carryOver === "off") return
+      if (!transactions.length || carryOver === "off") return
 
-    const latestTxn = transactions.sort((a, b) => b.date - a.date)[0]
-    const today = new Date().toISOString().slice(0, 10)
+      const latestTxn = transactions.sort((a, b) => b.date - a.date)[0]
+      const today = new Date().toISOString().slice(0, 10)
 
-    const newMonth = isNewMonth(latestTxn.date, today, carryOver)
-    const prevMonth = carryOver === "ad" ? new Date(latestTxn.date).getMonth() : new NepaliDate(new Date(latestTxn.date)).getBS().month
-    const currentMonth = carryOver === "ad" ? new Date().getMonth() : new NepaliDate(new Date()).getBS().month
+      const newMonth = isNewMonth(latestTxn.date, today, carryOver)
+      const prevMonth = carryOver === "ad" ? new Date(latestTxn.date).getMonth() : new NepaliDate(new Date(latestTxn.date)).getBS().month
+      const currentMonth = carryOver === "ad" ? new Date().getMonth() : new NepaliDate(new Date()).getBS().month
 
-    if (!newMonth) return
-    if (carryOverExists(transactions, carryOver)) return
+      if (!newMonth) return
+      if (carryOverExists(transactions, carryOver)) return
 
-    const balance = getPreviousMonthBalance(transactions, carryOver)
+      const balance = getPreviousMonthBalance(transactions, carryOver)
 
-    const addCarryOver = async () => {
-      if (balance > 0) {
-        await addTransaction({
-          type: "income",
-          amount: Math.abs(balance),
-          account: carryOverAccount,
-          category: "carry-over",
-          description: `Balance carried from ${carryOver === "ad" ? adMonths[prevMonth] : bsMonths[prevMonth]} to ${carryOver === "ad" ? adMonths[currentMonth] : bsMonths[currentMonth]}`,
-          date: today,
-        })
+      const addCarryOver = async () => {
+        if (balance > 0) {
+          await addTransaction({
+            type: "income",
+            amount: Math.abs(balance),
+            account: acc.id,
+            category: "carry-over",
+            description: `Balance carried from ${carryOver === "ad" ? adMonths[prevMonth] : bsMonths[prevMonth]} to ${carryOver === "ad" ? adMonths[currentMonth] : bsMonths[currentMonth]}`,
+            date: today,
+          })
+        }
       }
-    }
 
-    addCarryOver()
-    
-  }, [trans, carryOver, carryOverAccount])
+      addCarryOver()
+    })
+  }, [trans, carryOver, accounts])
 
   function getMonthKey(dateStr: string, calendarType: "ad" | "bs") {
     if (calendarType === "ad") {

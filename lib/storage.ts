@@ -1,3 +1,4 @@
+import { parse } from "path"
 import { type Transaction, type Category, type Account, EXPENSE_CATEGORIES, INCOME_CATEGORIES, ACCOUNTS } from "./types"
 
 const STORAGE_KEY = "expenseTrackerData"
@@ -65,7 +66,7 @@ export const storage = {
     const data = storage.getData()
     const newTransaction: Transaction = {
       ...transaction,
-      id: Date.now().toString(),
+      id: Date.now().toString() + (Math.random() * 10000).toFixed(0),
       userId: "local-user",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
