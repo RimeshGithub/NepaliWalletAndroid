@@ -76,24 +76,29 @@ export default function DownloadsPage() {
         entries.map(async (f) => {
           const name = typeof f === "string" ? f : f.name
 
-          // Get file metadata
           const stat = await Filesystem.stat({
             path: `${EXPORT_FOLDER}/${name}`,
             directory: Directory.Documents,
           })
 
+          // ✅ ONLY allow files (skip folders)
+          if (stat.type !== "file") return null
+
           return {
             name,
-            ctime: stat.ctime ?? 0,  // creation time
-            mtime: stat.mtime ?? 0,  // modification time
+            ctime: stat.ctime ?? 0,
+            mtime: stat.mtime ?? 0,
           }
         })
       )
 
-      // 🔥 Sort newest first using ctime
-      fileObjects.sort((a, b) => (b.ctime || 0) - (a.ctime || 0))
+      // ✅ Remove null values (folders)
+      const filesOnly = fileObjects.filter(Boolean) as FileType[]
 
-      setFiles(fileObjects)
+      // 🔥 Sort newest first using ctime
+      filesOnly.sort((a, b) => (b.ctime || 0) - (a.ctime || 0))
+
+      setFiles(filesOnly)
     } catch (err) {
       console.error("Error listing files", err)
       setFiles([])

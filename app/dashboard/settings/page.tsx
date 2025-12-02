@@ -16,7 +16,7 @@ import { useAccounts } from "@/hooks/use-accounts"
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth"
 import { useFirebaseSync } from "@/hooks/use-firebase-sync"
 import { storage } from "@/lib/storage"
-import { Database, HelpCircle, Download, Trash2, CloudDownload, DollarSign, Palette, X, Cloud, LogOut, LogIn, RefreshCwIcon } from "lucide-react"
+import { Database, HelpCircle, Download, Trash2, CloudDownload, DollarSign, Palette, DatabaseBackup, Cloud, LogOut, LogIn, RefreshCwIcon } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
@@ -69,6 +69,8 @@ export default function SettingsPage() {
   const [isSignup, setIsSignup] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
+  const [isMobile, setIsMobile] = useState(false)
+
   // Get today's date
   const today = new Date()
   const todayADYear = today.getFullYear()
@@ -79,6 +81,187 @@ export default function SettingsPage() {
 
   // Transaction filters for export
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
+
+  // Local backup
+  type FileType = {
+    name: string
+    uri?: string
+  }
+
+  const [backupFiles, setBackupFiles] = useState<FileType[]>([])
+  const BACKUP_FOLDER = "NepaliWallet/Local_Backups"
+
+  // Ensure folder exists
+  const ensureBackupFolderExists = async () => {
+    try {
+      await Filesystem.mkdir({
+        path: BACKUP_FOLDER,
+        directory: Directory.Documents,
+        recursive: true,
+      })
+    } catch (e: any) {
+      if (!String(e).includes("already exists")) {
+        console.warn("Folder creation failed:", e)
+      }
+    }
+  }
+
+  const loadBackupFiles = async () => {
+    if (!isMobile) return
+
+    try {
+      const result = await Filesystem.readdir({
+        path: BACKUP_FOLDER,
+        directory: Directory.Documents,
+      })
+
+      const entries = result.files || []
+
+      const fileObjects: FileType[] = await Promise.all(
+        entries.map(async (f) => {
+          const name = typeof f === "string" ? f : f.name
+
+          const stat = await Filesystem.stat({
+            path: `${BACKUP_FOLDER}/${name}`,
+            directory: Directory.Documents,
+          })
+
+          // ✅ ONLY allow files (skip folders)
+          if (stat.type !== "file") return null
+
+          return {
+            name,
+            ctime: stat.ctime ?? 0,
+            mtime: stat.mtime ?? 0,
+          }
+        })
+      )
+
+      // ✅ Remove null values (folders)
+      const filesOnly = fileObjects.filter(Boolean) as FileType[]
+
+      // 🔥 Sort newest first using ctime
+      filesOnly.sort((a, b) => (b.ctime || 0) - (a.ctime || 0))
+
+      setBackupFiles(filesOnly)
+    } catch (err) {
+      console.error("Error listing files", err)
+      setBackupFiles([])
+    }
+  }
+
+  useEffect(() => {
+    const mobile = Capacitor.getPlatform() !== "web"
+    setIsMobile(mobile)
+
+    const load = async () => {
+      if (mobile) {
+        await ensureBackupFolderExists()
+        await loadBackupFiles()
+      }
+    }
+
+    load()
+  }, [isMobile])
+
+  const handleCreateBackup = async () => {
+    if (!isMobile) return
+
+    try {
+      const backupData = storage.getData()
+
+      if (!backupData) {
+        throw new Error("No data found to backup")
+      }
+
+      await ensureBackupFolderExists()
+
+      const filename = `${Date.now()}.json`
+
+      await Filesystem.writeFile({
+        path: `${BACKUP_FOLDER}/${filename}`,
+        data: JSON.stringify(backupData, null, 2), // ✅ formatted JSON
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+        recursive: true,
+      })
+
+      await loadBackupFiles()
+
+      toast({
+        title: "Backup created",
+        description: "Your data has been successfully backed up locally.",
+      })
+    } catch (err) {
+      console.error("Backup error:", err)
+
+      toast({
+        title: "Error creating backup",
+        variant: "destructive",
+        description: String(err),
+      })
+    }
+  }
+
+  const handleRestoreBackup = async (file: FileType) => {
+    if (!isMobile) return
+
+    const ok = window.confirm(
+      "Are you sure you want to restore data from this backup? This will overwrite your local data."
+    )
+    if (!ok) return
+
+    try {
+      const readResult = await Filesystem.readFile({
+        path: `${BACKUP_FOLDER}/${file.name}`,
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+      })
+
+      const data = JSON.parse(readResult.data)
+
+      // ✅ Set restored data into storage
+      storage.saveData(data)
+
+      toast({
+        title: "Backup restored",
+        description: "Your data has been successfully restored.",
+      })
+
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 500)
+    } catch (err) {
+      toast({
+        title: "Error restoring backup",
+        variant: "destructive",
+        description: String(err),
+      })
+    }
+  }
+
+  const handleDeleteBackup = async (file: FileType) => {
+    if (!isMobile) return
+
+    const ok = window.confirm("Are you sure you want to delete this backup?")
+    if (!ok) return
+
+    try {
+      await Filesystem.deleteFile({
+        path: `${BACKUP_FOLDER}/${file.name}`,
+        directory: Directory.Documents,
+      })
+
+      // ✅ Refresh file list after deletion
+      loadBackupFiles()
+    } catch (err) {
+      toast({
+        title: "Error deleting backup",
+        variant: "destructive",
+        description: String(err),
+      })
+    }
+  }
 
   const [useBSDate, setUseBSDate] = useState(false) // Toggle between AD/BS
   useEffect(() => {
@@ -718,6 +901,68 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           )}
+
+          {isMobile && <Card>
+            <CardHeader className="flex flex-row sm:items-center sm:justify-between max-sm:flex-col gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                <DatabaseBackup className="h-5 w-5" />
+                  Local Backup
+                </CardTitle>
+                <CardDescription>Backup your data locally</CardDescription>
+              </div>
+              <Button onClick={handleCreateBackup}>Backup</Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Your Local Backups</Label>
+                {backupFiles.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No local backups found</p>
+                ) : (
+                  <div className="space-y-2 overflow-auto max-h-[200px]">
+                    {backupFiles.map((file) => (
+                      <div
+                        key={file.name}
+                        className={`flex items-center justify-between p-2 border rounded border-gray-400`}
+                      >
+                        <div className="flex gap-2">
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(parseInt(file.name)).toUTCString().split(" ").slice(0, 4).join(" ")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(parseInt(file.name)).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: true
+                            })}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestoreBackup(file)}
+                          >
+                            <DatabaseBackup className="h-4 w-4 hover:text-white" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteBackup(file)}
+                            className="hover:bg-red-500"
+                          >
+                            <Trash2 className="h-4 w-4 hover:text-white" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>}
 
           <Card className="flex flex-row sm:items-center sm:justify-between max-sm:flex-col gap-3">
             <CardHeader className="flex-1">
