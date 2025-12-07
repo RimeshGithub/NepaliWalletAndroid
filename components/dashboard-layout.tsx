@@ -15,7 +15,7 @@ import {
   PieChart,
   Cloud,
   CloudOff,
-  ArrowUpDown,
+  ArrowUpDown
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -57,9 +57,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={cn("flex flex-col h-full overflow-auto", mobile ? "py-4" : "")}>
-      <div className="flex items-center gap-2 px-7 py-6">
-        <Wallet className="h-8 w-8 text-primary" />
-        <span className="text-xl font-bold">NepaliWallet</span>
+      <div className="flex items-center gap-2 px-4 py-6">
+        <TrendingUp className="h-8 w-8 text-primary" />
+        <span className="text-xl font-bold">ExpenseTracker</span>
       </div>
 
       <nav className="flex-1 px-4 space-y-2 mb-5">
@@ -117,13 +117,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex h-screen bg-background">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:bg-card pt-3">
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:bg-card">
         <Sidebar />
       </div>
 
       {/* Mobile Sidebar */}
       <Sheet open={isOpen} onOpenChange={(v) => (v ? open() : close())}>
-        <SheetContent side="left" className="p-0 w-64 pt-2">
+        <SheetContent side="left" className="p-0 w-64 pt-8">
           <Sidebar mobile />
         </SheetContent>
       </Sheet>
@@ -131,7 +131,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between p-2 border-b bg-card">
+        <div className="lg:hidden flex items-center justify-between p-2 border-b bg-card max-sm:pt-10">
           <Sheet open={isOpen} onOpenChange={(v) => (v ? open() : close())}>
             <SheetTrigger asChild>
               <Button variant="ghost" onClick={open} className="h-12 w-12">
@@ -140,8 +140,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </SheetTrigger>
           </Sheet>
           <div className="flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-primary" />
-            <span className="font-bold">NepaliWallet</span>
+            <TrendingUp className="h-6 w-6 text-primary" />
+            <span className="font-bold">ExpenseTracker</span>
           </div>
           <div className="w-10" /> {/* Spacer for centering */}
         </div>
